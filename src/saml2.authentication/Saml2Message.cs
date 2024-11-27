@@ -203,26 +203,29 @@ namespace Saml2Authentication
             //if post method and needs signature then we need to ign the entire xml
             if (options.AuthenticationMethod == Saml2AuthenticationBehaviour.FormPost)
             {
+                var samlRequest = authnRequestXmlDoc;
                 if (options.SigningCertificate != null && options.AuthenticationRequestSigned)
                 {
-                    var signedAuthnRequestXmlDoc = authnRequestXmlDoc.AddXmlSignature(options.SigningCertificate, Elements.Issuer,
+                    samlRequest = authnRequestXmlDoc.AddXmlSignature(options.SigningCertificate, Elements.Issuer,
                         Namespaces.Assertion, $"#{authnRequestId}");
-
-                    saml2Message.SamlRequest = System.Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes(signedAuthnRequestXmlDoc.OuterXml));
-                    saml2Message.RelayState = relayState.DeflateEncode();//.UrlEncode();
                 }
+
+                saml2Message.SamlRequest = System.Convert.ToBase64String(System.Text.ASCIIEncoding.ASCII.GetBytes(samlRequest.OuterXml));
+                    saml2Message.RelayState = relayState.DeflateEncode();//.UrlEncode();
+
                 return saml2Message.BuildFormPost();
             }
             else
             {
                 //redirect binding
-                //if there is a certificate to add a query signature parameter to the authnrequest
-                if (options.SigningCertificate != null && options.AuthenticationRequestSigned)
-                {
+
                     saml2Message.SamlRequest = (authnRequestXmlDoc.OuterXml).DeflateEncode().UrlEncode().UpperCaseUrlEncode();
                     //relay state
                     saml2Message.RelayState = relayState.DeflateEncode().UrlEncode();
 
+                //if there is a certificate to add a query signature parameter to the authnrequest
+                if (options.SigningCertificate != null && options.AuthenticationRequestSigned)
+                {
                     (var key, var signatureMethod, var keyName) =
                         XmlDocumentExtensions.SetSignatureAlgorithm(options.SigningCertificate);
 
